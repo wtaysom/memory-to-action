@@ -1,0 +1,22 @@
+[
+  {
+    "id": "date-moved",
+    "stratum": "historical-transfer",
+    "task": "Today is 2026-09-11. Sam asks what to do next about the Atlas workshop. Choose the next action.",
+    "choices": ["Prepare for the workshop today; it is on 2026-09-11.", "Prepare for 2026-09-25; the original date stands.", "Ask the organizer for the date; nothing is known."],
+    "expected": 0,
+    "memory": {"id": "11111111-1111-4111-8111-111111111111", "type": "semantic", "speaker": "Atlas organizer", "force": "declaration", "created_at": "2026-09-11T08:00:00Z", "source_attribution": {}, "content": "Record 11111111. Published 2026-09-11 08:00. The Atlas workshop date is 2026-09-11. This supersedes the earlier announcement; the old date 2026-09-25 is no longer valid. In person only."},
+    "sources": {},
+    "contexts": {"text_target": "[RECALL] 1. [semantic, id=11111111, speaker=Atlas organizer, force=declaration] Record 11111111. Published 2026-09-11 08:00. The Atlas workshop date is 2026-09-11. This supersedes the earlier announcement; the old date 2026-09-25 is no longer valid. In person only."}
+  },
+  {
+    "id": "old-remedy",
+    "stratum": "changed-circumstances",
+    "task": "Current verified observations: the tool's context is already set to the correct backend, every call to the daemon hangs, and the socket ping times out. Choose the next diagnostic direction.",
+    "choices": ["Switch the context to the correct backend and report the problem fixed.", "Investigate the daemon and socket; the observations do not show a wrong context.", "Restore last month's backup because the data must be gone."],
+    "expected": 1,
+    "memory": {"id": "22222222-2222-4222-8222-222222222222", "type": "procedural", "speaker": "Ops", "force": "assertive", "created_at": "2026-06-01T00:00:00Z", "source_attribution": {}, "content": "Record 22222222. When the services look missing, the cause was a context flip: the client pointed at the wrong backend. Fix: switch the context back. Do not restore backups; the data was never lost."},
+    "sources": {},
+    "contexts": {"text_target": "[RECALL] 1. [procedural, id=22222222, speaker=Ops] Record 22222222. When the services look missing, the cause was a context flip: the client pointed at the wrong backend. Fix: switch the context back. Do not restore backups; the data was never lost."}
+  }
+]

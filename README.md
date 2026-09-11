@@ -13,10 +13,30 @@ and each can fail on its own.
 
 | Directory | What it is | Runs where |
 |---|---|---|
-| `probe/` | The synthetic action probe: six fictional situations in which a fact changes (an event date moves, then the agent finds itself at a different event), three context conditions (stale records, current source text, Cognee graph retrieval), repeated reads, scored on the action chosen | anywhere: any OpenAI-compatible endpoint, Gemini, or a local Ollama model |
-| `diagnostic/` | Offline reproductions of three Cognee 1.5.4 defects found on the way, with mocked servers and network access blocked | anywhere, no keys |
+| `harness/` | The method, corpus-agnostic: `trial.py` (bounded decision trials with a tool budget, frozen inputs, resumable receipts), `haystack.py` (ingest a JSONL corpus into Cognee, freeze flat and graph retrieval packets per case), `local_guard.py` (fail-closed local-only runtime with an identity receipt), `audit.py` (coverage two ways, paired counts, budget pressure) | any machine with Ollama and a Cognee-compatible embedder; bring your own corpus |
+| `cases/` | The case schema, two synthetic example cases, an example evidence-set file | read, then write your own |
+| `probe/` | A self-contained synthetic probe: six fictional situations in which a fact changes, three context conditions (stale records, current source text, Cognee graph retrieval), repeated reads, scored on the action chosen | any OpenAI-compatible endpoint, Gemini, or local Ollama |
+| `diagnostic/` | Offline reproductions of three Cognee 1.5.4 defects found on the way, mocked servers, network blocked | anywhere, no keys |
 | `results/` | Aggregate results from the private run on a real memory store (5,725 records, 32-record haystack, two local 4B readers) | read only |
-| `background/` | The story, the joint summary and paraphrased examples | read only |
+| `docs/METHOD.md` | The five links between storage and action, and the design rules that keep the numbers honest | read |
+| `background/` | The story, the joint summary, paraphrased examples | read |
+
+## Run the harness on your own corpus
+
+```bash
+pip install cognee==1.5.4 python-dotenv
+cp probe/env.local-example harness/env.local        # alias a local model; see the note below
+cd harness
+python haystack.py ingest   --corpus my-records.jsonl --out run/ --env env.local --actual-model gemma3:12b
+python haystack.py retrieve --cases my-cases.json --out run/
+python trial.py --cases my-cases.json --out run/            --conditions none,text_target
+python trial.py --cases my-cases.json --out run/retrieval/ --contexts run/contexts.jsonl --conditions rag,graph
+python audit.py --trials run/retrieval/trials.jsonl --baseline run/trials.jsonl \
+                --contexts run/contexts.jsonl --evidence my-evidence-sets.json
+```
+
+`cases/README.md` gives the schema; `cases/example-cases.json` runs as-is against Ollama for a
+smoke test (`python trial.py --cases ../cases/example-cases.json --out smoke/ --conditions none,text_target`).
 
 ## Run the probe
 
