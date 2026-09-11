@@ -1,0 +1,54 @@
+{
+  "versions": {
+    "cognee": "1.5.4",
+    "litellm": "1.96.2",
+    "openai": "2.54.0",
+    "pydantic": "2.13.5",
+    "tenacity": "9.1.4",
+    "httpx": "0.28.1"
+  },
+  "network": "blocked by socket audit hook",
+  "schema_routing": {
+    "capabilities": {
+      "ollama/gemma3:12b": false,
+      "gpt-4o": true
+    },
+    "requests": [
+      {
+        "model": "ollama/gemma3:12b",
+        "format": {
+          "type": "json_object"
+        }
+      },
+      {
+        "model": "gpt-4o",
+        "format": "TinyRecord"
+      }
+    ],
+    "meaning": "Model-name routing reproduced with mocked completion; no claim about output quality or live server enforcement."
+  },
+  "embedding_validation": [
+    {
+      "case": "batch",
+      "configured_default_batch": 36,
+      "upstream_status": 413,
+      "upstream_message": "batch size 36 > maximum allowed batch size 32",
+      "wrapped_exception": "EmbeddingException",
+      "wrapped_status": 422,
+      "attempts": 2,
+      "identical_request_retried": true,
+      "meaning": "Real Cognee/OpenAI-SDK error handling; mocked server validation, retry stop shortened to two attempts."
+    },
+    {
+      "case": "input",
+      "configured_default_batch": 36,
+      "upstream_status": 413,
+      "upstream_message": "Input validation error: `inputs` must have less than 2048 tokens. Given: 2402",
+      "wrapped_exception": "EmbeddingException",
+      "wrapped_status": 422,
+      "attempts": 2,
+      "identical_request_retried": true,
+      "meaning": "Real Cognee/OpenAI-SDK error handling; mocked server validation, retry stop shortened to two attempts."
+    }
+  ]
+}

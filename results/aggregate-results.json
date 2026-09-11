@@ -1,0 +1,61 @@
+{
+  "correct_actions": {
+    "none": {
+      "correct": 40,
+      "trials": 60
+    },
+    "text_target": {
+      "correct": 50,
+      "trials": 60
+    },
+    "rag": {
+      "correct": 49,
+      "trials": 60
+    },
+    "graph": {
+      "correct": 44,
+      "trials": 60
+    }
+  },
+  "paired": {
+    "none_to_rag": {
+      "improved": 10,
+      "regressed": 1,
+      "unchanged": 49
+    },
+    "none_to_graph": {
+      "improved": 10,
+      "regressed": 6,
+      "unchanged": 44
+    },
+    "text_target_to_rag": {
+      "improved": 4,
+      "regressed": 5,
+      "unchanged": 51
+    },
+    "text_target_to_graph": {
+      "improved": 0,
+      "regressed": 6,
+      "unchanged": 54
+    }
+  },
+  "retrieval_evidence_presence": {
+    "rag": {
+      "cases": 10,
+      "target_id_in_text": 9,
+      "target_in_source_references": 9,
+      "relevant_historical_passage": 9
+    },
+    "graph": {
+      "cases": 10,
+      "target_id_in_text": 6,
+      "target_in_source_references": 7,
+      "relevant_historical_passage": 8
+    }
+  },
+  "new_reader_trials": 120,
+  "new_malformed_json_errors": 1,
+  "fulltext_control_malformed_json_errors": 1,
+  "max_observed_prompt_tokens_new": 2718,
+  "limitations": "Diagnostic under incomplete ingestion; shared graph objects touched during failed attempt. No clean product ranking. Historical source texts and raw responses are withheld. No training or neighbor/format ablation."
+}

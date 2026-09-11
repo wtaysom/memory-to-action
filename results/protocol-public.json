@@ -1,0 +1,38 @@
+{
+  "cognee_version": "1.5.4",
+  "extractor_actual_model": "gemma3:12b",
+  "extractor_protocol_alias": "gpt-4o",
+  "embedding_model": "unsloth/embeddinggemma-300m",
+  "embedding_dimensions": 768,
+  "endpoint_scope": "local-only",
+  "reader_models": [
+    "qwen3.5:4b",
+    "gemma3:4b"
+  ],
+  "seeds": [
+    11,
+    29,
+    47
+  ],
+  "case_count": 10,
+  "conditions": [
+    "none",
+    "text_target",
+    "rag",
+    "graph"
+  ],
+  "retrieval_query_policy": "same task text for both retrieval methods; no choices or answer key",
+  "top_k": 5,
+  "chunk_size_approximate_tokens": 512,
+  "embedding_batch_size": 16,
+  "reader_context_tokens": 8192,
+  "reader_output_limit_tokens": 200,
+  "reader_max_responses": 3,
+  "completed_source_records": 32,
+  "partially_ingested_attempts": 1,
+  "planned_source_records": 108,
+  "scope": "Diagnostic under incomplete ingestion; shared graph objects touched during failed attempt. No clean product ranking. Historical source texts and raw responses are withheld. No training or neighbor/format ablation.",
+  "controls": "none and full-record conditions reused from earlier same-case/same-reader/same-seed trials",
+  "reader_temperature": 0.3,
+  "scoring": "Predefined expected action index; malformed finish JSON counts as incorrect. Tools are simulated reads, not real operational actions."
+}
