@@ -8,13 +8,13 @@ A newline-based parser was cutting off recalled memory previews. Across a 5,725-
 
 We then tested decisions, rather than assuming byte preservation guaranteed better behavior. Ten simulated maintenance situations, two local 4B readers, three seeds and four delivery conditions produced 240 trials. Correct choices out of 60 were: no memory 40, original delivery 48, repaired transport 49, richer framing 47. The richer framing changed metadata and historical-context guidance together, so their individual effects were not isolated. The small transport fix was retained; the richer presentation remained opt-in.
 
-A separate Gemma3 27B run scored 27/30 without memory and 26/30 with either original or repaired transport. Most choices were already solvable from the task alone at that size. That is a limitation of this battery, not a general finding that larger models do not need memory. [Delivery results](results/delivery-trials-results.md), [27B results](results/scale-27b-results.md).
+A separate Gemma3 27B run scored 27/30 without memory and 26/30 with either original or repaired transport. Most choices were already solvable from the task alone at that size. That is a limitation of this battery, not a general finding that larger models do not need memory. [Delivery results](../results/delivery-trials-results.md), [27B results](../results/scale-27b-results.md).
 
 ## Separate delivery from selection
 
 The first trials handed the reader a designated historical record. They could measure rendering and uptake, but could not show whether a retriever would find useful history.
 
-A complete-record control scored 50/60, compared with 49/60 for the repaired 500-character preview. Three paired decisions improved and two regressed. One regression was a wrong remedy; the other was malformed JSON at the output cap. The fuller history helped one reader and hurt the other overall. In one persistent failure case, the corrective passage was fully present but both readers still chose incorrectly. Preview truncation alone could not explain that failure. [Full-record control](results/fulltext-control-results.md).
+A complete-record control scored 50/60, compared with 49/60 for the repaired 500-character preview. Three paired decisions improved and two regressed. One regression was a wrong remedy; the other was malformed JSON at the output cap. The fuller history helped one reader and hurt the other overall. In one persistent failure case, the corrective passage was fully present but both readers still chose incorrectly. Preview truncation alone could not explain that failure. [Full-record control](../results/fulltext-control-results.md).
 
 We next used Cognee 1.5.4 to select context from a larger set. The planned ingestion held eight distinct designated source records and 100 keyword-selected neighbors. The source set was deliberately target-rich. Some supposed distractors were actually better evidence than the designated record for a changed situation.
 
@@ -40,7 +40,7 @@ Three examples make the numbers useful. They are paraphrased in [EXAMPLES.md](EX
 
 **A failed mechanism read as a recipe.** In a stop-loop case, neither retrieval method found the needed correction, and both scored 0/6. Supplying the full record also scored 0/6. Qwen's explanations adopted the recorded failed mechanism as a recommendation; Gemma's explanations were less specific. The four main conditions all failed this case, but an earlier delivery condition did produce two correct labels. We therefore do not claim that every presentation or model must fail.
 
-The largest observed prompt in the new reader trials was 2,718 tokens against an 8,192-token context setting. Initial context overflow does not explain these results. The graph condition and reused full-record control each contain one malformed-JSON failure, both Qwen, counted incorrect. Correct action labels sometimes coexisted with faulty explanations, so these counts do not establish sound reasoning or successful operations. [Detailed results](results/haystack-results.md).
+The largest observed prompt in the new reader trials was 2,718 tokens against an 8,192-token context setting. Initial context overflow does not explain these results. The graph condition and reused full-record control each contain one malformed-JSON failure, both Qwen, counted incorrect. Correct action labels sometimes coexisted with faulty explanations, so these counts do not establish sound reasoning or successful operations. [Detailed results](../results/haystack-results.md).
 
 ## The ingestion failure limits the comparison
 
@@ -48,7 +48,7 @@ The build completed 32 records: all eight designated sources and 24 neighbors. T
 
 The failed attempt had no document/chunk index entry, but 13 shared graph nodes and two edges had update timestamps during it. Four graph packets referenced touched nodes. Without a pre-failure snapshot, we cannot isolate whether their contents changed or affected decisions. The frozen result is therefore a diagnostic under incomplete ingestion. It is not a clean 32-record product benchmark, and adding records could introduce helpful evidence as well as difficulty.
 
-Along the way we reproduced three local-adapter issues: schema routing based on model-name capability lookup, an embedding batch beyond server capacity, and an oversized embedding input whose error was retried unchanged. The [adapter report](COGNEE-NOTES.md) distinguishes observed behavior, workarounds, suggested fixes and the limits of its synthetic reproduction.
+Along the way we reproduced three local-adapter issues: schema routing based on model-name capability lookup, an embedding batch beyond server capacity, and an oversized embedding input whose error was retried unchanged. The [adapter report](../diagnostic/COGNEE-NOTES.md) distinguishes observed behavior, workarounds, suggested fixes and the limits of its synthetic reproduction.
 
 ## What we would build next
 

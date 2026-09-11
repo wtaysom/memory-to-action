@@ -6,15 +6,15 @@ Tested Python 3.12; Cognee 1.5.4, LiteLLM 1.96.2, OpenAI SDK 2.54.0, Pydantic 2.
 
 ## Reproduce without services or private data
 
-In a disposable Python 3.12 environment:
+From the repository root, in a disposable Python 3.12 environment:
 
 ```sh
 python3.12 -m venv .venv
-.venv/bin/pip install -r code/requirements-repro.txt
-.venv/bin/python code/reproduce_adapters.py
+.venv/bin/pip install -r diagnostic/requirements-repro.txt
+.venv/bin/python diagnostic/reproduce_adapters.py
 ```
 
-Dependency installation requires network access; the reproduction itself does not. It writes `code/adapter-reproduction-results.json`. Expected: the two model names select different structured-output paths; both synthetic embedding validation errors produce two identical requests and end as a Cognee `EmbeddingException` with status 422. The reproduction deliberately shortens the retry stop to two attempts and removes waiting. Production backoff remains unchanged in the installed package.
+Dependency installation requires network access; the reproduction itself does not. It writes `diagnostic/adapter-reproduction-results.json`. Expected: the two model names select different structured-output paths; both synthetic embedding validation errors produce two identical requests and end as a Cognee `EmbeddingException` with status 422. The reproduction deliberately shortens the retry stop to two attempts and removes waiting. Production backoff remains unchanged in the installed package.
 
 The script calls a private adapter helper to isolate routing. It is version-specific diagnostic code, not an application API example. The capability table comes from installed LiteLLM data. HTTPX simulates the TEI rejections with the exact error bodies observed in the local run; synthetic long text is not asserted to tokenize to exactly 2,402 tokens under a live tokenizer.
 

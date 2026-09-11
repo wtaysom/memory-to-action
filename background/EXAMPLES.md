@@ -30,4 +30,4 @@ Gemma answered correctly in 3/3 full-record trials. The graph packet contained t
 
 Neither retriever delivered the relevant correction, and each condition scored 0/6. The complete-record control delivered it but also scored 0/6. These are different failures: selection can miss a lesson, while a reader can receive it and still adopt the failed mechanism. An earlier delivery condition produced some correct labels, so failure here is not a universal limitation.
 
-See [reported per-case results](results/haystack-results.md) and the [method and limitations](WRITEUP.md).
+See [reported per-case results](../results/haystack-results.md) and the [method and limitations](WRITEUP.md).

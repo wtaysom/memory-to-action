@@ -7,3 +7,7 @@ __pycache__/
 .data*/
 .system*/
 receipts/
+run/
+smoke/
+env.local
+.probe-storage/

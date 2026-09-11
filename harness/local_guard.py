@@ -1,14 +1,14 @@
-"""Fail-closed local-only runtime for Cognee: nothing leaves the machine.
+"""Python socket allowlist for configured loopback/private-network Cognee endpoints.
 
 Loads a dotenv config, refuses any endpoint that resolves outside loopback/private ranges, installs a
 Python audit hook that blocks DNS and connections to every other host, strips cloud API keys and
 proxies, and returns an identity receipt (which local weights actually sit behind the model alias,
 which embedder, its declared limits) so a frozen protocol can prove what ran.
 
-Why the alias: Cognee 1.5.4 takes its schema-enforced output path only when
-litellm.supports_response_schema(model) is true, which no Ollama-named model is. `ollama cp
-gemma3:12b gpt-4o` plus LLM_PROVIDER=openai and LLM_ENDPOINT=http://localhost:11434/v1 routes the
-same weights through a name litellm accepts; Ollama enforces the JSON schema by grammar.
+Model-name lookup can select a different structured-output path for an alias. See
+../diagnostic/COGNEE-NOTES.md for the tested names and limits. Private-network endpoints
+may be other machines. This Python audit hook is not an OS sandbox and does not
+constrain arbitrary native libraries or subprocesses.
 """
 import ipaddress, json, os, socket, sys
 from pathlib import Path
@@ -19,6 +19,8 @@ from dotenv import dotenv_values
 
 
 def configure(env_file, storage_root, actual_model=None):
+    if not Path(env_file).is_file():
+        raise RuntimeError(f'Missing explicit configuration: {env_file}')
     values = {k: v for k, v in dotenv_values(env_file).items() if v is not None}
     for key, value in values.items():
         os.environ[key] = value
@@ -27,11 +29,11 @@ def configure(env_file, storage_root, actual_model=None):
         os.environ.pop(key, None)
     os.environ['OPENAI_API_KEY'] = values.get('LLM_API_KEY', 'local')
     os.environ['OPENAI_BASE_URL'] = values['LLM_ENDPOINT']
-    os.environ.setdefault('TELEMETRY_DISABLED', 'true')
-    os.environ.setdefault('CACHING', 'false')
+    os.environ['TELEMETRY_DISABLED'] = 'true'
+    os.environ['CACHING'] = 'false'
     os.environ.setdefault('COGNEE_SKIP_CONNECTION_TEST', 'true')  # the 30 s preflight times out on a busy local GPU
-    os.environ['DATA_ROOT_DIRECTORY'] = str(Path(storage_root) / 'data')
-    os.environ['SYSTEM_ROOT_DIRECTORY'] = str(Path(storage_root) / 'system')
+    os.environ['DATA_ROOT_DIRECTORY'] = str(Path(storage_root).resolve() / 'data')
+    os.environ['SYSTEM_ROOT_DIRECTORY'] = str(Path(storage_root).resolve() / 'system')
     hosts = {'localhost', '127.0.0.1', '::1'}
     for key in ('LLM_ENDPOINT', 'EMBEDDING_ENDPOINT'):
         hosts.add(urlparse(values[key]).hostname)
@@ -66,9 +68,14 @@ def configure(env_file, storage_root, actual_model=None):
         identity['llm_alias_digest'] = models.get(alias)
         if actual_model:
             identity['actual_llm'] = actual_model
-            if models.get(actual_model) != models.get(alias):
+            actual_tag = actual_model if ':' in actual_model else actual_model + ':latest'
+            if not models.get(actual_tag) or not models.get(alias):
+                raise RuntimeError('Declared model or alias missing from Ollama tags.')
+            if models[actual_tag] != models[alias]:
                 raise RuntimeError('Alias digest differs from the declared actual model.')
-    except OSError:
+    except OSError as exc:
+        if actual_model:
+            raise RuntimeError('Cannot verify the requested model identity.') from exc
         identity['llm_alias_digest'] = 'unavailable (not Ollama?)'
     try:  # text-embeddings-inference: declared limits, so batches and inputs can be bounded
         with opener.open(values['EMBEDDING_ENDPOINT'].rsplit('/v1', 1)[0] + '/info', timeout=10) as r:

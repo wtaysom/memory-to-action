@@ -24,6 +24,9 @@ def main():
     ap.add_argument('--evidence', help='{"cases": {id: {"target": id, "alternative_valid": [ids]}}}')
     a = ap.parse_args()
     rows = load(a.trials) + (load(a.baseline) if a.baseline else [])
+    keys = [(r['case'], r['condition'], r['model'], r['seed']) for r in rows]
+    if len(keys) != len(set(keys)):
+        raise SystemExit('Duplicate trial cells, including overlap with baseline; refusing double counts.')
     conds = sorted({r['condition'] for r in rows}, key=lambda c: (c != 'none', c))
     tot, n, tok, err = (collections.Counter() for _ in range(4))
     for r in rows:

@@ -11,7 +11,7 @@ which records arrived. Ingestion appends a receipt per record and stops between 
 cutoff; a failed record stops the pipeline rather than silently skipping (partial graph state would
 otherwise be unaccounted for). Retrieval uses only_context=True: the search's rendered context is
 captured, never Cognee's own answer, so one reader sees every condition. Self-improvement and
-feedback reweighting are off so no query changes the store.
+feedback reweighting are off. Search may still update operational metadata.
 """
 import argparse, asyncio, hashlib, json, random, time
 from datetime import datetime, timezone
@@ -33,26 +33,25 @@ def append(p, v):
 
 
 async def ingest(a):
+    if a.out.exists() and any(a.out.iterdir()):
+        raise SystemExit('Existing output may contain partial state; use a fresh --out.')
+    rows = [json.loads(l) for l in a.corpus.read_text().splitlines() if l.strip()]
+    if not rows or len({r['id'] for r in rows}) != len(rows):
+        raise SystemExit('Corpus must be nonempty with unique record IDs.')
     from local_guard import configure
     identity = configure(a.env, a.out / 'storage', a.actual_model)
     import cognee
     from cognee.tasks.ingestion.data_item import DataItem
     a.out.mkdir(parents=True, exist_ok=True)
-    rows = [json.loads(l) for l in a.corpus.read_text().splitlines() if l.strip()]
     pp = a.out / 'protocol.json'
-    if pp.exists():
-        protocol = json.loads(pp.read_text())
-        if protocol['corpus_sha256'] != sha(a.corpus) or protocol['status'] != 'ingesting':
-            raise SystemExit('Corpus changed or run already frozen; use a new --out.')
-    else:
-        protocol = dict(created_at=datetime.now(timezone.utc).isoformat(), identity=identity,
-                        dataset='haystack_' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S'),
-                        corpus_sha256=sha(a.corpus), planned_count=len(rows), cutoff=a.cutoff,
-                        chunk_size=a.chunk_size, top_k=a.top_k,
-                        search_types={'rag': 'RAG_COMPLETION', 'graph': 'GRAPH_COMPLETION'}, status='ingesting')
-        save(pp, protocol)
+    protocol = dict(created_at=datetime.now(timezone.utc).isoformat(), identity=identity,
+                    dataset='haystack_' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%f'),
+                    corpus_sha256=sha(a.corpus), env_sha256=sha(a.env), planned_count=len(rows), cutoff=a.cutoff,
+                    chunk_size=a.chunk_size, top_k=a.top_k,
+                    search_types={'rag': 'RAG_COMPLETION', 'graph': 'GRAPH_COMPLETION'}, status='ingesting')
+    save(pp, protocol)
     receipts = a.out / 'ingestion.jsonl'
-    done = {r['record_id'] for r in map(json.loads, receipts.read_text().splitlines()) if r.get('success')} if receipts.exists() else set()
+    done = set()
     for i, row in enumerate(rows):
         if row['id'] in done:
             continue
@@ -87,14 +86,33 @@ async def retrieve(a):
     from local_guard import configure
     protocol = json.loads((a.out / 'protocol.json').read_text())
     if protocol['status'] not in ('ingested', 'retrieved'):
-        raise SystemExit('Ingestion incomplete or failed; freeze it explicitly first.')
-    configure(a.env, a.out / 'storage')
+        raise SystemExit('Ingestion incomplete or failed; automatic recovery is unsupported. Use a new run.')
+    if protocol.get('env_sha256') != sha(a.env):
+        raise SystemExit('Configuration changed or was not frozen; use a new run.')
+    cases_hash = sha(a.cases)
+    if protocol.get('cases_sha256') not in (None, cases_hash):
+        raise SystemExit('Cases changed after retrieval started; use a new run.')
+    target = a.out / 'contexts.jsonl'
+    if protocol.get('status') == 'retrieved':
+        if not target.exists() or sha(target) != protocol.get('contexts_sha256'):
+            raise SystemExit('Frozen contexts changed.')
+        print('Already retrieved; frozen cases and contexts verified.')
+        return
+    if target.exists() and not protocol.get('cases_sha256'):
+        raise SystemExit('Existing contexts have no frozen cases.')
+    protocol['cases_sha256'] = cases_hash
+    save(a.out / 'protocol.json', protocol)  # freeze before the first query
+    identity = configure(a.env, a.out / 'storage', protocol['identity'].get('actual_llm'))
+    if identity.get('llm_alias_digest') != protocol['identity'].get('llm_alias_digest'):
+        raise SystemExit('Extractor identity changed since ingestion.')
     import cognee
     from cognee.modules.search.types import SearchType
     cases = json.loads(a.cases.read_text())
-    protocol['cases_sha256'] = sha(a.cases)
-    target = a.out / 'contexts.jsonl'
-    done = {(r['case'], r['condition']) for r in map(json.loads, target.read_text().splitlines())} if target.exists() else set()
+    existing = list(map(json.loads, target.read_text().splitlines())) if target.exists() else []
+    done = {(r['case'], r['condition']) for r in existing}
+    expected = {(c['id'], k) for c in cases for k in protocol['search_types']}
+    if len({c['id'] for c in cases}) != len(cases) or len(done) != len(existing) or not done <= expected:
+        raise SystemExit('Duplicate cases/contexts or out-of-grid contexts.')
     jobs = [(c, k) for c in cases for k in protocol['search_types']]
     random.Random(20260911).shuffle(jobs)
     for case, cond in jobs:
@@ -125,6 +143,10 @@ def main():
     ap.add_argument('--top-k', type=int, default=5)
     ap.add_argument('--record-timeout', type=int, default=900)
     a = ap.parse_args()
+    if (a.mode == 'ingest' and not a.corpus) or (a.mode == 'retrieve' and not a.cases):
+        ap.error('ingest requires --corpus; retrieve requires --cases')
+    if a.cutoff and datetime.fromisoformat(a.cutoff).tzinfo is None:
+        ap.error('--cutoff must include a timezone, e.g. +00:00')
     asyncio.run(ingest(a) if a.mode == 'ingest' else retrieve(a))
 
 

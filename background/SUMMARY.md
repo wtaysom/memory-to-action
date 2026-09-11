@@ -19,4 +19,4 @@ The practical lesson is to measure both **what evidence reaches the decision** a
 
 The run completed 32 records and left one partial ingestion attempt. Shared graph objects were touched during the failure. These are small-sample diagnostics, not a clean ranking of products or proof of long-horizon competence. Private source records and responses are withheld; the historical benchmark cannot be rerun from this package. Three local-adapter findings have separate, runnable offline synthetic reproductions.
 
-Read the [full account](WRITEUP.md), [reported results](results/haystack-results.md), [paraphrased examples](EXAMPLES.md), and [adapter findings](COGNEE-NOTES.md).
+Read the [full account](WRITEUP.md), [reported results](../results/haystack-results.md), [paraphrased examples](EXAMPLES.md), and [adapter findings](../diagnostic/COGNEE-NOTES.md).

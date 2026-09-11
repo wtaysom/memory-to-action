@@ -1,7 +1,7 @@
 # Case schema
 
-`cases.json` is a list. Each case is a bounded decision whose correct answer depends on a stored
-correction. Freeze the file (hash it) before any inference; `trial.py` refuses to mix runs.
+`cases.json` is a list. Each case is a bounded decision for testing how stored history affects a decision; the task and choices may already
+contain enough information to answer correctly. Freeze the file (hash it) before any inference; `trial.py` refuses to mix runs.
 
 ```json
 {

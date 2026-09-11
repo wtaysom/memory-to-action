@@ -8,13 +8,14 @@ import time
 from datetime import datetime, timezone
 
 import action_probe as base
-from cognee.modules.search.types import SearchType
 
 OUT = base.ROOT / 'receipts/action_probe_clarified'
 
 
 async def prepare():
-    OUT.mkdir(exist_ok=False)
+    base.setup()
+    from cognee.modules.search.types import SearchType
+    OUT.mkdir(parents=True, exist_ok=False)
     cases = [c for c in base.fixtures() if c['id']=='unblocked-1']
     case = cases[0]
     old = 'Sam wants to use the hackathon visit to build a memory-system demo.'
@@ -23,9 +24,9 @@ async def prepare():
     case['documents'] = [d.replace(old,new) for d in case['documents']]
     case['stale_documents'] = [d.replace(old,new) for d in case['stale_documents']]
     base.dump(OUT/'cases.json',cases)
-    protocol = dict(created_at=datetime.now(timezone.utc).isoformat(),
+    protocol = dict(created_at=datetime.now(timezone.utc).isoformat(), config_sha256=base.config_sha256(),
                     conditions=['stale','direct','cognee'],repetitions=[0,1,2],
-                    system=base.SYSTEM, reader_model=os.environ['LLM_MODEL'],
+                    system=base.SYSTEM, reader_model=os.environ['LLM_MODEL'], reader_endpoint=os.environ.get('LLM_ENDPOINT'),
                     temperature=0.3,max_tokens=4096,
                     cases_sha256=hashlib.sha256((OUT/'cases.json').read_bytes()).hexdigest(),
                     scope='Post-hoc clarification sensitivity check, one case with three repeats. '

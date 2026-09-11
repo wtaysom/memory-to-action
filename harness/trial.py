@@ -56,7 +56,7 @@ def trial(case, condition, model, seed, context, ollama_url):
             tool = action.get('tool')
             if tool == 'finish':
                 receipt['choice'] = action.get('choice')
-                receipt['passed'] = isinstance(action.get('choice'), int) and action['choice'] == case['expected']
+                receipt['passed'] = type(action.get('choice')) is int and action['choice'] == case['expected']
                 break
             if tool == 'read_memory':
                 mid = action.get('id', '')
@@ -89,24 +89,43 @@ def main():
     conditions = [c.strip() for c in a.conditions.split(',')]
     models = [m.strip() for m in a.models.split(',')]
     seeds = [int(s) for s in a.seeds.split(',')]
+    if len({c['id'] for c in cases}) != len(cases):
+        raise SystemExit('Duplicate case IDs.')
+    for values in (conditions, models, seeds):
+        if not values or len(values) != len(set(values)) or '' in values:
+            raise SystemExit('Conditions, models and seeds must be nonempty and unique.')
+    for c in cases:
+        if type(c['expected']) is not int or not 0 <= c['expected'] < len(c['choices']):
+            raise SystemExit(f'Invalid expected action for {c["id"]}')
     extra = {}
     if a.contexts:
         for row in map(json.loads, a.contexts.read_text().splitlines()):
-            extra[(row['case'], row['condition'])] = row['context']
+            key = (row['case'], row['condition'])
+            if key in extra:
+                raise SystemExit(f'Duplicate context: {key}')
+            extra[key] = row['context']
     a.out.mkdir(parents=True, exist_ok=True)
     freeze = dict(cases_sha256=hashlib.sha256(a.cases.read_bytes()).hexdigest(),
                   contexts_sha256=hashlib.sha256(a.contexts.read_bytes()).hexdigest() if a.contexts else None,
-                  models=models, seeds=seeds, conditions=conditions, max_turns=MAX_TURNS, options=OPTIONS)
+                  models=models, seeds=seeds, conditions=conditions, max_turns=MAX_TURNS, options=OPTIONS,
+                  ollama_url=a.ollama_url, system_sha256=hashlib.sha256(SYSTEM.encode()).hexdigest(),
+                  runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
     fp = a.out / 'freeze.json'
     if fp.exists():
         prior = json.loads(fp.read_text())
-        if prior['cases_sha256'] != freeze['cases_sha256'] or prior['contexts_sha256'] != freeze['contexts_sha256']:
-            raise SystemExit('Inputs differ from the frozen run in --out; use a new directory.')
+        if prior != freeze:
+            raise SystemExit('Inputs, settings or runner differ from the frozen run in --out; use a new directory.')
     else:
+        if (a.out / 'trials.jsonl').exists():
+            raise SystemExit('Existing trials lack a freeze; use a new output directory.')
         fp.write_text(json.dumps(freeze, indent=2))
     dest = a.out / 'trials.jsonl'
-    done = {(r['case'], r['condition'], r['model'], r['seed'])
-            for r in map(json.loads, dest.read_text().splitlines())} if dest.exists() else set()
+    prior_rows = list(map(json.loads, dest.read_text().splitlines())) if dest.exists() else []
+    done = {(r['case'], r['condition'], r['model'], r['seed']) for r in prior_rows}
+    expected_grid = {(c['id'], cond, model, seed) for c in cases for cond in conditions
+                     for model in models for seed in seeds}
+    if len(done) != len(prior_rows) or not done <= expected_grid:
+        raise SystemExit('Duplicate or out-of-grid trial receipts.')
     for model in models:
         jobs = [(c, cond, s) for c in cases for cond in conditions for s in seeds]
         random.Random(20260911).shuffle(jobs)

@@ -1,6 +1,6 @@
 """Frozen synthetic action choices after incremental Cognee memory updates.
 
-Uses the provider configuration in correction_smoke; no live Sill data is read.
+Uses explicit probe/.env configuration and fictional records only.
 The output is an exploratory system comparison, not a learned-policy claim.
 """
 import argparse
@@ -12,8 +12,13 @@ import random
 import time
 from datetime import datetime, timezone
 
-from correction_smoke import ROOT, cognee
-from cognee.modules.search.types import SearchType
+from runtime import ROOT, configure, config_sha256
+cognee = None
+
+def setup():
+    global cognee
+    if cognee is None:
+        cognee = configure()
 from litellm import acompletion
 
 TASK = (
@@ -75,13 +80,15 @@ def dump(path, data):
 
 
 async def prepare(out):
+    setup()
+    from cognee.modules.search.types import SearchType
     cases = fixtures()
     out.mkdir(parents=True, exist_ok=False)
     dump(out / 'cases.json', cases)
     protocol = dict(
-        created_at=datetime.now(timezone.utc).isoformat(), synthetic=True,
+        created_at=datetime.now(timezone.utc).isoformat(), synthetic=True, config_sha256=config_sha256(),
         conditions=['stale', 'direct', 'cognee'], repetitions=[0, 1, 2],
-        system=SYSTEM, reader_model=os.environ['LLM_MODEL'], temperature=0.3,
+        system=SYSTEM, reader_model=os.environ['LLM_MODEL'], reader_endpoint=os.environ.get('LLM_ENDPOINT'), temperature=0.3,
         max_tokens=4096,
         retrieval=dict(query_type='GRAPH_COMPLETION', auto_route=False,
                        only_context=True, top_k=15, self_improvement=False),
@@ -139,7 +146,12 @@ def normalize_contexts(out):
 
 
 async def run(out):
+    setup()
     protocol = json.loads((out / 'protocol.json').read_text())
+    if protocol.get('config_sha256') != config_sha256():
+        raise SystemExit('Explicit probe configuration changed after preparation.')
+    if protocol['reader_model'] != os.environ['LLM_MODEL'] or protocol.get('reader_endpoint') != os.environ.get('LLM_ENDPOINT'):
+        raise SystemExit('Reader model or endpoint changed after preparation.')
     if protocol.get('status') == 'aborted':
         raise SystemExit('This setup run was aborted; do not mix replacement calls into it.')
     for name in ['cases', 'contexts']:
@@ -196,7 +208,7 @@ def summarize(out):
     if len(keys) != len(set(keys)) or set(keys) != expected:
         raise SystemExit('Incomplete or duplicate trial grid; refusing a final summary.')
     text = ['# Cognee action probe', '',
-            'Synthetic incremental updates; same Gemini reader in every condition. '
+            'Synthetic incremental updates; same configured reader in every condition. '
             'Higher action accuracy is better. Three repeats per case are sampling '
             'checks, not three independent situations.', '',
             '| Context | Correct / trials | Mean reader input tokens | Mean reader seconds |',
@@ -205,7 +217,7 @@ def summarize(out):
         selected = [r for r in rows if r['condition'] == condition]
         tokens = [r['response']['usage']['prompt_tokens'] for r in selected if 'response' in r]
         text.append(f'| {condition} | {sum(r["passed"] for r in selected)}/{len(selected)} | '
-                    f'{statistics.mean(tokens):.0f} | '
+                    f'{statistics.mean(tokens) if tokens else "unavailable"} | '
                     f'{statistics.mean(r["elapsed_seconds"] for r in selected):.2f} |')
     text += ['', '| Case | Expected action | Stale | Direct | Cognee |', '|---|---|---:|---:|---:|']
     for case in json.loads((out / 'cases.json').read_text()):

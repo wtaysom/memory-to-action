@@ -1,44 +1,25 @@
 # Method: measuring whether memory changes the action
 
-The claim under test is not "the store has the fact" but "the fact governs the next action."
-Between the two sit five links, and each can fail alone:
+We distinguish five stages: storing a correction, selecting relevant history, delivering it intact, interpreting its force, and choosing an action. This is a diagnostic framework; today's experiment did not isolate every stage causally.
 
-1. **Storage.** The correction was written down.
-2. **Selection.** The retriever surfaces it, or something as good, among plausible neighbors.
-3. **Delivery.** What was selected arrives intact in the reader's context.
-4. **Uptake.** The reader reads it as what it is (a correction, a failure report, a null result).
-5. **Action.** The chosen action changes accordingly.
+## Design and scoring
 
-## Design rules that made the day's numbers trustworthy
+- **Score the selected action and inspect the explanation.** Each case has a predefined expected index. All errors stay in the denominator. A correct label can have a faulty reason, so the score does not establish understanding or successful real-world operations.
+- **Freeze inputs and settings.** Reader runs compare case/context hashes, settings, system prompt and runner identity before resuming. Retrieval records the case hash before querying, checks configuration, and verifies finished context hashes. Keep model versions/digests separately: a fixed model name alone does not freeze weights. Avoid concurrent writers to one output directory.
+- **Pair case, model and seed.** Report improvements, regressions and unchanged decisions together with their denominator. Three seeds are repetitions, not independent situations.
+- **Separate record supply from retrieval.** `text_target` supplies the designated record directly. Selection is fixed, not perfect: the designated old lesson can be inappropriate now. Retrieval changes several aspects of the context at once, including content and ordering. It does not isolate graph structure or summaries.
+- **Report reader dependence.** The 27B reader scored 27/30 without memory; the two 4B readers left more room for differences. Stop-loop failed in the four main 4B comparison conditions, but an earlier delivery condition produced two correct labels. Avoid universal claims about what no reader or condition can solve.
+- **Audit coverage at multiple levels.** The supplied audit reports ID-prefix presence and target-or-alternative presence. Those are routing checks, not proof of passage delivery or truth. Manually inspect the relevant passages as a separate measurement, preferably before inspecting reader outcomes.
+- **Keep retrieval and answering separate.** Cognee uses `only_context=True`, with self-improvement disabled and feedback influence zero. This does not guarantee that search leaves every byte of storage unchanged.
+- **Describe network scope accurately.** The Python socket guard allows only configured loopback/private-network addresses; it is not a full process sandbox. An explicit actual-model declaration must match a present Ollama alias digest. Reader endpoint configuration is separate.
+- **Disclose incomplete ingestion.** Failed/interrupted ingestion can leave partial state. The public runner refuses to resume it automatically; it does not reproduce the historical manual snapshot/audit/recovery procedure.
 
-- **Score the action, not the prose.** Each case is a bounded choice with one expected index.
-  Reasons are kept for inspection. Twice today a reader picked the right index for a wrong reason;
-  action totals therefore overstate understanding, and the receipts say so.
-- **Freeze before inference.** Cases, contexts and settings are hashed; the runner refuses to
-  append trials from changed inputs. Resume never repeats a completed trial.
-- **Pair everything.** With three seeds, the honest unit is the (case, model, seed) pair across
-  conditions: improved, regressed, unchanged. Totals hide opposite movements.
-- **Isolate one link per condition.** `none` (task and choices), `text_target` (the right record,
-  complete, hand-picked: selection held perfect), retrieval conditions (selection under test with
-  delivery and reader fixed). Compare `text_target` with a truncated rendering to test delivery alone.
-- **Use small readers on purpose.** A 27B model solved nine of ten cases from the choices; a 4B
-  model leaves headroom, so differences in what it is handed show up as differences in what it does.
-  The cost is a reader-limited case (stop-loop) that no condition solves; mark it as such.
-- **Audit coverage two ways.** Designated target present, and target-or-valid-alternative present,
-  because a haystack can hold a better record than the one you designated. Then read the packets
-  for the cases that matter: an id mention is not the passage.
-- **Keep retrieval and answering apart.** `only_context=True`; the same reader sees every condition.
-- **Nothing learns from the run.** Self-improvement and feedback reweighting off, fresh dataset.
-- **Fully local when the corpus is private.** A socket audit hook that blocks every non-local host,
-  and an identity receipt proving which weights sat behind the model alias.
-- **Report what stopped.** A cutoff or a failure freezes a partial corpus that is reported as such,
-  never padded.
+The simulated `read_memory` tool can open the case's designated record if the reader supplies its full ID or a prefix of at least eight characters; `read_source` can open supplied supporting text by path. These tools are available across conditions, including no initially supplied memory. Thus `none` means no memory in the initial prompt, not an enforced prohibition on subsequent evidence access. Tool results are recorded.
 
-## What today's run could and could not say
+## Findings and limits
 
-Could: retrieval over 32 records matched the hand-picked record (49 vs 50 of 60); graph completion
-lost mostly on rendering and reading; one changed-circumstances case showed retrieval undoing the
-damage the hand-picked old lesson had done. Could not: isolate the neighbor's causal role (no
-ablation), rank products (one corpus size, three seeds, two readers), or claim anything about
-long-horizon autonomy. The ablation that would settle the first is one run: remove the neighbor
-record from the haystack and rerun the case.
+Text retrieval scored 49/60 versus 50/60 for the designated record, with four paired improvements and five regressions. That is not established equivalence. Graph retrieval scored 44/60; its regressions include missing-evidence and evidence-use failures. Neither summary wording nor ordering was isolated as the cause.
+
+The historical run completed 32 records, then one failed partial attempt touched shared graph objects. Ten cases, two readers and three seeds do not support a general product ranking or a claim about long-horizon autonomy. Historical raw fixtures and responses are withheld; public code is a portable adaptation and includes separate synthetic examples.
+
+To test the competing-record explanation, first hold a retrieved packet fixed and remove or replace only that record's passage. Repeat across seeds/readers and inspect reasons as well as choices. Removing a record from the corpus and rebuilding the graph changes extraction and retrieval too; that is a different, broader intervention.
