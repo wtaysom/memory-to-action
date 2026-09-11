@@ -37,6 +37,9 @@ python audit.py --trials run/retrieval/trials.jsonl --baseline run/trials.jsonl 
 
 `cases/README.md` gives the schema; `cases/example-cases.json` runs as-is against Ollama for a
 smoke test (`python trial.py --cases ../cases/example-cases.json --out smoke/ --conditions none,text_target`).
+Smoke receipt, 2026-09-11 15:15 PDT, Gemma3 4B, seed 11: `date-moved` correct with and without
+the record; `old-remedy` correct with no memory and **wrong once handed the old lesson**, which is
+the changed-circumstances effect from the real run reproduced on two synthetic cases in four calls.
 
 ## Run the probe
 
